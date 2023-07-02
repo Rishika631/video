@@ -8,6 +8,7 @@ st.set_page_config(page_title="YouTube Video Summarizer and Q&A")
 # Function to extract transcript from YouTube video
 def extract_transcript(youtube_video):
     video_id = youtube_video.split("=")[1]
+    YouTubeTranscriptApi.get_transcript(video_id)
     transcript = YouTubeTranscriptApi.get_transcript(video_id)
     
     transcript_text = ""
@@ -16,21 +17,35 @@ def extract_transcript(youtube_video):
     
     return transcript_text
 
+
 # Function to summarize transcript
 def summarize_transcript(transcript):
     # Split transcript into chunks of 1000 characters (for T5 model limitation)
     chunks = [transcript[i:i+1000] for i in range(0, len(transcript), 1000)]
     
     # Initialize summarization model
+   
     summarization_model = pipeline("summarization")
+
+    
     
     # Summarize each chunk and combine the summaries
-    summary = ""
-    for chunk in chunks:
-        summarized_chunk = summarization_model(chunk, max_length=100, min_length=50, do_sample=False)[0]["summary_text"]
-        summary += summarized_chunk + " "
+    num_iters = int(len(result)/1000)
+    summarized_text = []
+    for i in range(0, num_iters + 1):
+          start = 0
+          start = i * 1000
+          end = (i + 1) * 1000
+          #print("input text \n" + result[start:end])
+          out = summarizer(result[start:end])
+          out = out[0]
+          out = out['summary_text']
+          #print("Summarized text\n"+out)
+          summarized_text.append(out)
+
+#print(summarized_text)
     
-    return summary
+    return summarized_text
 
 # Function to perform question-answering
 def perform_qa(text, question):
