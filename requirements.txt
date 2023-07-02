@@ -7,3 +7,6 @@ altair<5
 transformers==4.10.0
 torch
 PyPDF2
+nltk
+youtube_transcript_api
+base64
