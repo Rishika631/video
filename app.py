@@ -1,17 +1,15 @@
 import streamlit as st
-from transformers import pipeline, T5Tokenizer
+from transformers import pipeline
 from youtube_transcript_api import YouTubeTranscriptApi
 from PyPDF2 import PdfWriter
-import nltk
-from nltk.tokenize import sent_tokenize
 import base64
 
 # Set Streamlit page configuration
-st.set_page_config(page_title="YouTube Video Transcript Summarizer and Q&A")
+st.set_page_config(page_title="YouTube Video Summarizer and Q&A")
 
 # Function to extract transcript from YouTube video
 def extract_transcript(youtube_video):
-    video_id = youtube_video.split("=")[-1]
+    video_id = youtube_video.split("=")[1]
     transcript = YouTubeTranscriptApi.get_transcript(video_id)
     
     transcript_text = ""
@@ -22,35 +20,28 @@ def extract_transcript(youtube_video):
 
 # Function to summarize transcript
 def summarize_transcript(transcript):
-    # Tokenize transcript into sentences
-    sentences = sent_tokenize(transcript)
+    # Split transcript into chunks of 1000 characters (for T5 model limitation)
+    chunks = [transcript[i:i+1000] for i in range(0, len(transcript), 1000)]
     
-    # Select a summary length based on the number of sentences
-    summary_length = max(int(len(sentences) * 0.3), 1)
+    # Initialize summarization model
+    summarization_model = pipeline("summarization")
     
-    # Join sentences back into a single string for summarization
-    input_text = " ".join(sentences)
+    # Summarize each chunk and combine the summaries
+    summary = ""
+    for chunk in chunks:
+        summarized_chunk = summarization_model(chunk, max_length=100, min_length=50, do_sample=False)[0]["summary_text"]
+        summary += summarized_chunk + " "
     
-    # Use T5 model for summarization
-    summarization_model = pipeline("summarization", model="t5-base", tokenizer="t5-base")
-    
-    # Generate summary
-    summary = summarization_model(input_text, max_length=summary_length, min_length=summary_length)
-    summary_text = summary[0]['summary_text']
-    
-    return summary_text
+    return summary
 
-# Function to generate PDF with transcript and summary
-def generate_pdf(transcript, summary):
+# Function to generate PDF with transcript summary
+def generate_pdf(summary):
     pdf_path = "transcript_summary.pdf"
     pdf_writer = PdfWriter()
     pdf_writer.add_page()
     pdf_writer.set_font("Arial", size=12)
     
-    pdf_writer.cell(0, 10, txt="Transcript:", ln=True)
-    pdf_writer.cell(0, 10, txt=transcript, ln=True)
-    
-    pdf_writer.cell(0, 10, txt="\nSummary:", ln=True)
+    pdf_writer.cell(0, 10, txt="Summary:", ln=True)
     pdf_writer.cell(0, 10, txt=summary, ln=True)
     
     with open(pdf_path, "wb") as f:
@@ -72,7 +63,7 @@ def perform_qa(pdf_path, question):
 
 # Streamlit app
 def main():
-    st.header("YouTube Video Transcript Summarizer and Q&A")
+    st.header("YouTube Video Summarizer and Q&A")
     
     # Get YouTube video URL from user
     youtube_video = st.text_input("Enter the YouTube video URL:")
@@ -84,16 +75,24 @@ def main():
         # Summarize transcript
         summary = summarize_transcript(transcript)
         
-        # Generate PDF with transcript and summary
-        pdf_path = generate_pdf(transcript, summary)
+        # Generate PDF with transcript summary
+        pdf_path = generate_pdf(summary)
         
-        st.info("Transcript and Summary generated successfully!")
+        st.info("Transcript summary generated successfully!")
         
-        # Display transcript and summary
-        st.subheader("Transcript")
-        st.text_area("Transcript", transcript, height=300)
-        
-        st.subheader("Summary")
+        # Display transcript summary
+        st.subheader("Transcript Summary")
         st.text(summary)
         
-        # Provide
+        # Provide question input
+        user_question = st.text_input("Ask a question about the video:")
+        
+        if user_question:
+            # Perform question-answering on the PDF
+            answer = perform_qa(pdf_path, user_question)
+            
+            st.subheader("Question-Answering")
+            st.write(answer)
+
+if __name__ == "__main__":
+    main()
