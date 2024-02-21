@@ -2,6 +2,12 @@ import streamlit as st
 from transformers import pipeline
 from youtube_transcript_api import YouTubeTranscriptApi
 
+# Load summarization model outside the function
+summarizer = pipeline('summarization')
+
+# Load question-answering model outside the function
+qa_model = pipeline("question-answering", model="bert-large-uncased-whole-word-masking-finetuned-squad")
+
 # Set Streamlit page configuration
 st.set_page_config(page_title="YouTube Video Summarizer and Q&A")
 
@@ -17,12 +23,10 @@ def extract_transcript(youtube_video):
     return transcript_text
 
 # Function to summarize transcript
+@st.cache
 def summarize_transcript(transcript):
     # Split transcript into chunks of 1000 characters (for T5 model limitation)
     chunks = [transcript[i:i+1000] for i in range(0, len(transcript), 1000)]
-    
-    # Initialize summarization model
-    summarizer = pipeline('summarization')
     
     # Summarize each chunk and combine the summaries
     summarized_text = []
@@ -34,8 +38,8 @@ def summarize_transcript(transcript):
     return summarized_text
 
 # Function to perform question-answering
+@st.cache
 def perform_qa(text, question):
-    qa_model = pipeline("question-answering", model="bert-large-uncased-whole-word-masking-finetuned-squad")
     answer = qa_model(question=question, context=text)
     return answer["answer"]
 
