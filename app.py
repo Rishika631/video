@@ -1,7 +1,7 @@
-User
 import streamlit as st
 from transformers import pipeline
 from youtube_transcript_api import YouTubeTranscriptApi
+from transformers import pipeline
 
 # Set Streamlit page configuration
 st.set_page_config(page_title="YouTube Video Summarizer and Q&A")
